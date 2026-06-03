@@ -95,7 +95,9 @@
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em;}
   /* 16px font keeps iOS Safari from auto-zooming when a field is focused */
-  .field input,.field select,.field textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:13px 14px;outline:none;}
+  .field input,.field select,.field textarea{width:100%;min-width:0;font:inherit;font-size:16px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:13px 14px;outline:none;}
+  /* iOS Safari gives date inputs an intrinsic min width that overflows; normalize it */
+  .field input[type=date]{-webkit-appearance:none;appearance:none;}
   .field input:focus,.field select:focus{border-color:var(--accent);}
   .ftwo{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   /* min-width:0 lets date/number inputs shrink inside the grid instead of overflowing into the next field */
@@ -365,7 +367,8 @@ import { get as idbGet, set as idbSet } from './idb-keyval.js';
       <div class="typepick" id="tp"><button data-t="expense" class="on">－ Spend</button><button data-t="income">＋ Income</button></div>
       <div class="ftwo"><div class="field"><label>Amount</label><input id="f_amt" class="mono" type="number" step="any" inputmode="decimal"></div><div class="field"><label>Currency</label><select id="f_cur">${curOptions(state.base)}</select></div></div>
       <div class="field"><label>Category</label><input id="f_cat" placeholder="Food, salary, rent…"></div>
-      <div class="ftwo"><div class="field"><label>Date</label><input id="f_date" type="date" value="${today()}"></div><div class="field"><label>Note</label><input id="f_note"></div></div>
+      <div class="field"><label>Date</label><input id="f_date" type="date" value="${today()}"></div>
+      <div class="field"><label>Note</label><input id="f_note"></div>
       <button class="btn-primary" id="saveEntry">Save</button><button class="btn-ghost" id="cancelEntry">Cancel</button>`);
     $('#tp').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;entryType=b.dataset.t;[...$('#tp').children].forEach(x=>x.classList.toggle('on',x===b));});
     $('#cancelEntry').onclick=closeSheet;
@@ -385,7 +388,8 @@ import { get as idbGet, set as idbSet } from './idb-keyval.js';
       <div class="typepick" id="dp"><button data-d="lent" class="on">↗ I lend out</button><button data-d="borrowed">↙ I borrow</button></div>
       <div class="field"><label>Person</label><input id="d_person" list="ppl" value="${ESC(prefillPerson||'')}" placeholder="Name"><datalist id="ppl">${people.map(p=>`<option value="${ESC(p)}">`).join('')}</datalist></div>
       <div class="ftwo"><div class="field"><label>Amount</label><input id="d_amt" class="mono" type="number" step="any" inputmode="decimal"></div><div class="field"><label>Currency</label><select id="d_cur">${curOptions(state.base)}</select></div></div>
-      <div class="ftwo"><div class="field"><label>Date</label><input id="d_date" type="date" value="${today()}"></div><div class="field"><label>Note</label><input id="d_note"></div></div>
+      <div class="field"><label>Date</label><input id="d_date" type="date" value="${today()}"></div>
+      <div class="field"><label>Note</label><input id="d_note"></div>
       <button class="btn-primary" id="saveLoan">Save</button><button class="btn-ghost" id="cancelLoan">Cancel</button>`);
     $('#dp').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;dir=b.dataset.d;[...$('#dp').children].forEach(x=>x.classList.toggle('on',x===b));});
     $('#cancelLoan').onclick=closeSheet;
@@ -449,7 +453,8 @@ import { get as idbGet, set as idbSet } from './idb-keyval.js';
     openSheet(`<h3>Recurring payment</h3>
       <div class="field"><label>Name</label><input id="r_name" placeholder="Rent, subscription…"></div>
       <div class="ftwo"><div class="field"><label>Monthly amount</label><input id="r_amt" class="mono" type="number" step="any" inputmode="decimal"></div><div class="field"><label>Currency</label><select id="r_cur">${curOptions(state.base)}</select></div></div>
-      <div class="ftwo"><div class="field"><label>Start</label><input id="r_start" type="date" value="${today()}"></div><div class="field"><label>End (optional)</label><input id="r_end" type="date"></div></div>
+      <div class="field"><label>Start</label><input id="r_start" type="date" value="${today()}"></div>
+      <div class="field"><label>End (optional)</label><input id="r_end" type="date"></div>
       <div class="field"><label>Day of month</label><input id="r_day" class="mono" type="number" min="1" max="31" value="1"></div>
       <button class="btn-primary" id="saveRecur">Save</button><button class="btn-ghost" id="cancelRecur">Cancel</button>`);
     $('#cancelRecur').onclick=closeSheet;
