@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1413">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Budget</title>
+<style>
+  html,body{margin:0;padding:0;background:#0e1413;}
+</style>
+</head>
+<body>
+<!-- Personal Budget Tracker — single-file prototype (v2) -->
+<div id="app-root">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  #app-root {
+    --bg:#0e1413; --panel:#151e1c; --panel-2:#1b2624; --line:#2a3633;
+    --ink:#e8efec; --muted:#8a9b96; --accent:#e0a83c; --pos:#4fd1a5; --neg:#e8716a;
+    --radius:16px;
+    font-family:'IBM Plex Sans',system-ui,sans-serif; color:var(--ink); background:var(--bg);
+    line-height:1.45; -webkit-font-smoothing:antialiased;
+    max-width:480px; margin:0 auto; min-height:100vh; padding-bottom:92px; position:relative;
+  }
+  #app-root *{box-sizing:border-box;margin:0;padding:0;}
+  .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
+  .disp{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;}
+
+  header{padding:22px 20px 10px;display:flex;align-items:baseline;justify-content:space-between;}
+  header h1{font-size:19px;font-weight:800;}
+  header .base-pill{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-family:'IBM Plex Mono',monospace;}
+
+  .view{padding:4px 16px 20px;display:none;}
+  .view.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  .hero{background:linear-gradient(150deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:14px;}
+  .hero .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);}
+  .hero .big{font-size:34px;font-weight:800;margin-top:4px;}
+  .hero .big small{font-size:16px;color:var(--muted);font-weight:500;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:10px;}
+  .card .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+  .card .num{font-size:20px;font-weight:600;margin-top:3px;}
+  .pos{color:var(--pos);} .neg{color:var(--neg);} .acc{color:var(--accent);}
+
+  .sect-title{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:18px 2px 8px;display:flex;justify-content:space-between;align-items:center;}
+  .add-link{font-size:12px;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0;border:1px solid var(--line);border-radius:999px;padding:5px 12px;}
+
+  .row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;}
+  .row.tap{cursor:pointer;} .row.tap:active{background:var(--panel-2);}
+  .row .ic{width:38px;height:38px;flex:0 0 38px;border-radius:10px;display:grid;place-items:center;font-size:17px;background:var(--panel-2);}
+  .row .meta{flex:1;min-width:0;}
+  .row .meta .t{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .row .meta .s{font-size:12px;color:var(--muted);}
+  .row .amt{font-size:14.5px;font-weight:600;text-align:right;white-space:nowrap;}
+  .row .amt .sub{font-size:11px;color:var(--muted);font-weight:400;}
+  .row .chev{color:var(--muted);font-size:18px;}
+  .row .x{color:var(--muted);font-size:18px;cursor:pointer;padding:0 2px;}
+  .row .x:hover{color:var(--neg);}
+
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:26px 10px;}
+
+  .seg{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+  .seg button{font:inherit;font-size:12.5px;color:var(--muted);cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 13px;}
+  .seg button.on{color:var(--bg);background:var(--accent);border-color:var(--accent);font-weight:600;}
+
+  nav.tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(14,20,19,.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom));}
+  nav.tabs button{background:none;border:none;color:var(--muted);cursor:pointer;font:inherit;font-size:10.5px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 10px;flex:1;}
+  nav.tabs button .gi{font-size:19px;line-height:1;}
+  nav.tabs button.on{color:var(--accent);}
+
+  .fab{position:fixed;bottom:78px;left:50%;transform:translateX(160px);width:54px;height:54px;border-radius:50%;background:var(--accent);color:var(--bg);border:none;font-size:30px;cursor:pointer;box-shadow:0 8px 24px rgba(224,168,60,.35);z-index:30;display:grid;place-items:center;padding-bottom:4px;}
+  @media (max-width:480px){.fab{left:auto;right:18px;transform:none;}}
+  .fab.hide{display:none;}
+
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;display:none;}
+  .scrim.open{display:block;}
+  .sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,100%);width:100%;max-width:480px;z-index:50;background:var(--panel);border-top-left-radius:22px;border-top-right-radius:22px;border:1px solid var(--line);padding:18px 18px 26px;transition:transform .28s cubic-bezier(.3,.7,.3,1);max-height:88vh;overflow-y:auto;}
+  .sheet.open{transform:translate(-50%,0);}
+  .sheet h3{font-size:17px;font-weight:700;margin-bottom:4px;}
+  .sheet .sub-h{font-size:12.5px;color:var(--muted);margin-bottom:14px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em;}
+  .field input,.field select,.field textarea{width:100%;font:inherit;font-size:15px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;outline:none;}
+  .field input:focus,.field select:focus{border-color:var(--accent);}
+  .ftwo{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .typepick{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px;}
+  .typepick button{font:inherit;font-size:13px;cursor:pointer;padding:11px 6px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);}
+  .typepick button.on{border-color:var(--accent);color:var(--ink);background:rgba(224,168,60,.12);}
+  .btn-primary{width:100%;font:inherit;font-size:15px;font-weight:600;cursor:pointer;background:var(--accent);color:var(--bg);border:none;border-radius:12px;padding:14px;margin-top:4px;}
+  .btn-sec{width:100%;font:inherit;font-size:14px;font-weight:500;cursor:pointer;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:8px;}
+  .btn-ghost{width:100%;font:inherit;font-size:13px;cursor:pointer;color:var(--muted);background:none;border:none;padding:10px;margin-top:6px;}
+
+  .pill-inline{font-size:11px;cursor:pointer;color:var(--accent);background:rgba(224,168,60,.1);border:1px solid var(--line);border-radius:999px;padding:2px 8px;margin-left:6px;}
+  .acct-head{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;}
+  .acct-head .net{font-size:26px;font-weight:800;}
+  .hist{font-size:12.5px;color:var(--muted);}
+  .hist .h-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);}
+  .hist .h-row:last-child{border:none;}
+  .quickfill{font-size:11px;color:var(--accent);cursor:pointer;}
+  .rate-row{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center;margin-bottom:10px;}
+  .note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5;}
+  .bar{height:8px;border-radius:4px;background:var(--panel-2);overflow:hidden;margin-top:8px;}
+  .bar>span{display:block;height:100%;background:var(--accent);}
+  .status-paid{color:var(--pos);font-weight:600;}
+  .status-due{color:var(--accent);font-weight:600;}
+</style>
+
+<header>
+  <h1 class="disp">Budget</h1>
+  <span class="base-pill" id="basePill">base —</span>
+</header>
+
+<!-- DASHBOARD -->
+<section class="view active" id="view-home">
+  <div class="hero">
+    <div class="lbl">Available cash</div>
+    <div class="big mono" id="cashBig">—</div>
+    <div class="bar"><span id="spendBar"></span></div>
+    <div class="note" id="spendBarNote"></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="lbl">Income · this month</div><div class="num mono pos" id="mIncome">—</div></div>
+    <div class="card"><div class="lbl">Spent · this month</div><div class="num mono neg" id="mSpent">—</div></div>
+    <div class="card"><div class="lbl">Owed to me</div><div class="num mono pos" id="receiv">—</div></div>
+    <div class="card"><div class="lbl">I owe</div><div class="num mono neg" id="payab">—</div></div>
+  </div>
+  <div class="card"><div class="lbl">Monthly recurring commitment</div><div class="num mono acc" id="recurTotal">—</div></div>
+  <div class="sect-title">Balances by currency</div>
+  <div id="byCurrency"></div>
+</section>
+
+<!-- TRANSACTIONS -->
+<section class="view" id="view-tx">
+  <div class="seg" id="txFilter">
+    <button class="on" data-f="all">All</button>
+    <button data-f="income">Income</button>
+    <button data-f="expense">Expenses</button>
+  </div>
+  <div id="txList"></div>
+</section>
+
+<!-- DEBTS / PEOPLE -->
+<section class="view" id="view-debt">
+  <div class="sect-title">People <span class="add-link" id="newLoanBtn">+ New loan</span></div>
+  <div id="peopleList"></div>
+</section>
+
+<!-- RECURRING -->
+<section class="view" id="view-recur">
+  <div class="sect-title">Recurring payments <span class="add-link" id="newRecurBtn">+ Add</span></div>
+  <div id="recurList"></div>
+</section>
+
+<!-- SETTINGS -->
+<section class="view" id="view-set">
+  <div class="sect-title">Currencies &amp; rates</div>
+  <div class="card">
+    <div class="field"><label>Base currency (totals shown in this)</label><select id="baseSel"></select></div>
+    <div id="rateRows"></div>
+    <div class="note">Set how much <b>1 unit</b> of each currency is worth in base. e.g. base UZS → <span class="mono">1 KGS = 138.89 UZS</span>.</div>
+  </div>
+  <button class="btn-primary" id="saveRates">Save rates</button>
+  <div class="sect-title">Data</div>
+  <button class="btn-ghost" id="exportBtn">Export backup (JSON)</button>
+  <button class="btn-ghost" id="importBtn">Import backup (JSON)</button>
+  <input type="file" id="importFile" accept="application/json" style="display:none">
+  <button class="btn-ghost" id="resetBtn" style="color:var(--neg)">Reset all data</button>
+</section>
+
+<button class="fab" id="fab">+</button>
+<nav class="tabs">
+  <button class="on" data-v="home"><span class="gi">◧</span>Home</button>
+  <button data-v="tx"><span class="gi">≡</span>Ledger</button>
+  <button data-v="debt"><span class="gi">⇄</span>Debts</button>
+  <button data-v="recur"><span class="gi">↻</span>Recurring</button>
+  <button data-v="set"><span class="gi">⚙</span>Settings</button>
+</nav>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"></div>
+
+<script type="module">
+import { get as idbGet, set as idbSet } from './idb-keyval.js';
+
+(function(){
+  "use strict";
+
+  /* ===== storage layer =====================================================
+     On-device storage via IndexedDB (idb-keyval, vendored locally as
+     ./idb-keyval.js). idb-keyval stores structured objects directly, so we
+     persist the `state` object itself — no JSON.stringify/parse needed.
+     Money records never leave the device.
+  ========================================================================= */
+  const KEY = 'budget-data-v2';
+  async function loadState(){ try{ return (await idbGet(KEY)) || null; }catch(e){ return null; } }
+  async function saveState(){ try{ await idbSet(KEY, state); }catch(e){ console.error(e); } }
+
+  let state=null;
+  const DEFAULT = {
+    base:'UZS',
+    currencies:[{code:'UZS',rate:1},{code:'KGS',rate:138.89},{code:'USD',rate:12100}],
+    tx:[],          // {id,type:'income'|'expense',amount,cur,cat,date,note,recurId?,recurMonth?}
+    debts:[],       // movements: {id,person,kind:'lent'|'borrowed'|'repaid_to_me'|'repaid_by_me',amount,cur,date,note}
+    recur:[]        // {id,name,amount,cur,start,end,day,paid:[ 'YYYY-MM' ]}
+  };
+
+  /* ===== helpers ===== */
+  const $=s=>document.querySelector(s);
+  const uid=()=>Math.random().toString(36).slice(2,9);
+  const cur=c=>state.currencies.find(x=>x.code===c)||{rate:1};
+  const toBase=(a,c)=>a*(cur(c).rate||1);
+  const ym=d=>d.slice(0,7);
+  const thisMonth=()=>new Date().toISOString().slice(0,7);
+  const today=()=>new Date().toISOString().slice(0,10);
+  const fmt=n=>Math.round(n).toLocaleString('en-US');
+  const ESC=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  // signed contribution to "this person owes me", in base currency
+  const SIGN={lent:+1, repaid_by_me:+1, borrowed:-1, repaid_to_me:-1};
+  // cash effect in base currency
+  const CASH={lent:-1, repaid_to_me:+1, borrowed:+1, repaid_by_me:-1};
+
+  /* ===== computed ===== */
+  function cashBalance(){
+    let c=0;
+    state.tx.forEach(t=>c+=(t.type==='income'?1:-1)*toBase(t.amount,t.cur));
+    state.debts.forEach(d=>c+=CASH[d.kind]*toBase(d.amount,d.cur));
+    return c;
+  }
+  function monthTotals(m){ let inc=0,sp=0; state.tx.forEach(t=>{ if(ym(t.date)!==m)return; const v=toBase(t.amount,t.cur); if(t.type==='income')inc+=v; else sp+=v; }); return {inc,sp}; }
+  function personList(){
+    const map={};
+    state.debts.forEach(d=>{
+      const p=d.person||'—';
+      if(!map[p]) map[p]={person:p,netBase:0,byCur:{},last:'',moves:[]};
+      map[p].netBase += SIGN[d.kind]*toBase(d.amount,d.cur);
+      map[p].byCur[d.cur]=(map[p].byCur[d.cur]||0)+SIGN[d.kind]*d.amount;
+      map[p].moves.push(d);
+      if(d.date>map[p].last) map[p].last=d.date;
+    });
+    return Object.values(map).sort((a,b)=>Math.abs(b.netBase)-Math.abs(a.netBase));
+  }
+  function receivables(){ return personList().reduce((a,p)=>a+Math.max(p.netBase,0),0); }
+  function payables(){ return personList().reduce((a,p)=>a+Math.max(-p.netBase,0),0); }
+  function recurMonthly(){ const m=thisMonth(); return state.recur.filter(r=>r.start.slice(0,7)<=m&&(!r.end||r.end.slice(0,7)>=m)).reduce((a,r)=>a+toBase(r.amount,r.cur),0); }
+  function balancesByCurrency(){
+    const map={}; state.currencies.forEach(c=>map[c.code]=0);
+    state.tx.forEach(t=>map[t.cur]=(map[t.cur]||0)+(t.type==='income'?1:-1)*t.amount);
+    state.debts.forEach(d=>map[d.cur]=(map[d.cur]||0)+CASH[d.kind]*d.amount);
+    return map;
+  }
+
+  /* ===== render ===== */
+  function render(){
+    $('#basePill').textContent='base '+state.base;
+    $('#cashBig').innerHTML=fmt(cashBalance())+' <small>'+state.base+'</small>';
+    const mt=monthTotals(thisMonth());
+    $('#mIncome').textContent=fmt(mt.inc);
+    $('#mSpent').textContent=fmt(mt.sp);
+    $('#receiv').textContent=fmt(receivables());
+    $('#payab').textContent=fmt(payables());
+    $('#recurTotal').textContent=fmt(recurMonthly())+' / mo';
+    const ref=Math.max(mt.inc,mt.sp,1), pct=Math.min(100,Math.round(mt.sp/ref*100));
+    $('#spendBar').style.width=pct+'%';
+    $('#spendBar').style.background=pct>85?'var(--neg)':'var(--accent)';
+    $('#spendBarNote').textContent=`Spent ${pct}% of this month's income`;
+    const bc=balancesByCurrency();
+    $('#byCurrency').innerHTML=state.currencies.map(c=>{const n=bc[c.code]||0;
+      return `<div class="row"><div class="ic">${c.code[0]}</div><div class="meta"><div class="t">${c.code}</div><div class="s">1 ${c.code} = ${c.rate} ${state.base}</div></div><div class="amt mono ${n<0?'neg':''}">${fmt(n)} <span class="sub">${c.code}</span></div></div>`;}).join('');
+    renderTx(); renderPeople(); renderRecur(); renderRates();
+  }
+
+  let txF='all';
+  function renderTx(){
+    let list=state.tx.slice().sort((a,b)=>b.date.localeCompare(a.date));
+    if(txF!=='all') list=list.filter(t=>t.type===txF);
+    $('#txList').innerHTML=list.length?list.map(t=>{const inc=t.type==='income';
+      return `<div class="row"><div class="ic">${inc?'＋':'－'}</div><div class="meta"><div class="t">${ESC(t.cat)||(inc?'Income':'Expense')}</div><div class="s">${t.date}${t.note?' · '+ESC(t.note):''}</div></div><div class="amt mono ${inc?'pos':'neg'}">${inc?'+':'−'}${fmt(t.amount)} <span class="sub">${t.cur}</span></div><span class="x" data-del-tx="${t.id}">×</span></div>`;
+    }).join(''):'<div class="empty">No transactions yet. Tap + to add income or a spend.</div>';
+  }
+
+  function renderPeople(){
+    const ppl=personList();
+    $('#peopleList').innerHTML=ppl.length?ppl.map(p=>{
+      const owesMe=p.netBase>=0;
+      const sub=Math.abs(p.netBase)<1?'settled up':(owesMe?'owes you':'you owe');
+      return `<div class="row tap" data-person="${ESC(p.person)}"><div class="ic">${owesMe?'↗':'↙'}</div>
+        <div class="meta"><div class="t">${ESC(p.person)}</div><div class="s">${sub} · ${p.last}</div></div>
+        <div class="amt mono ${Math.abs(p.netBase)<1?'':(owesMe?'pos':'neg')}">${fmt(Math.abs(p.netBase))} <span class="sub">${state.base}</span></div>
+        <span class="chev">›</span></div>`;
+    }).join(''):'<div class="empty">No loans yet. Tap “+ New loan”.</div>';
+  }
+
+  function renderRecur(){
+    const m=thisMonth();
+    $('#recurList').innerHTML=state.recur.length?state.recur.map(r=>{
+      const active=r.start.slice(0,7)<=m&&(!r.end||r.end.slice(0,7)>=m);
+      const paid=(r.paid||[]).includes(m);
+      const status=!active?'<span class="s">inactive this month</span>':(paid?'<span class="status-paid">paid this month ✓</span>':'<span class="status-due">due this month</span>');
+      return `<div class="row tap" data-recur="${r.id}"><div class="ic" style="color:${active?'var(--accent)':'var(--muted)'}">↻</div>
+        <div class="meta"><div class="t">${ESC(r.name)}</div><div class="s">${status} · day ${r.day}</div></div>
+        <div class="amt mono">${fmt(r.amount)} <span class="sub">${r.cur}</span></div><span class="chev">›</span></div>`;
+    }).join(''):'<div class="empty">No recurring payments. Tap “+ Add”.</div>';
+  }
+
+  function renderRates(){
+    $('#baseSel').innerHTML=state.currencies.map(c=>`<option ${c.code===state.base?'selected':''}>${c.code}</option>`).join('');
+    $('#rateRows').innerHTML=state.currencies.map((c,i)=>`<div class="rate-row"><input class="mono" data-code="${i}" value="${c.code}" maxlength="4"><input class="mono" data-rate="${i}" type="number" step="any" value="${c.rate}" ${c.code===state.base?'disabled':''}></div>`).join('');
+  }
+
+  /* ===== sheet plumbing ===== */
+  const scrim=$('#scrim'), sheet=$('#sheet');
+  function openSheet(html){ sheet.innerHTML=html; scrim.classList.add('open'); requestAnimationFrame(()=>sheet.classList.add('open')); }
+  function closeSheet(){ sheet.classList.remove('open'); scrim.classList.remove('open'); }
+  scrim.addEventListener('click',closeSheet);
+  const curOptions=sel=>state.currencies.map(c=>`<option ${c.code===sel?'selected':''}>${c.code}</option>`).join('');
+
+  /* ----- income / expense (FAB only) ----- */
+  let entryType='expense';
+  function txSheet(){
+    entryType='expense';
+    openSheet(`<h3>Add entry</h3>
+      <div class="typepick" id="tp"><button data-t="expense" class="on">－ Spend</button><button data-t="income">＋ Income</button></div>
+      <div class="ftwo"><div class="field"><label>Amount</label><input id="f_amt" class="mono" type="number" step="any" inputmode="decimal"></div><div class="field"><label>Currency</label><select id="f_cur">${curOptions(state.base)}</select></div></div>
+      <div class="field"><label>Category</label><input id="f_cat" placeholder="Food, salary, rent…"></div>
+      <div class="ftwo"><div class="field"><label>Date</label><input id="f_date" type="date" value="${today()}"></div><div class="field"><label>Note</label><input id="f_note"></div></div>
+      <button class="btn-primary" id="saveEntry">Save</button><button class="btn-ghost" id="cancelEntry">Cancel</button>`);
+    $('#tp').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;entryType=b.dataset.t;[...$('#tp').children].forEach(x=>x.classList.toggle('on',x===b));});
+    $('#cancelEntry').onclick=closeSheet;
+    $('#saveEntry').onclick=async()=>{
+      const amt=parseFloat($('#f_amt').value); if(!amt||amt<=0){$('#f_amt').focus();return;}
+      state.tx.push({id:uid(),type:entryType,amount:amt,cur:$('#f_cur').value,cat:$('#f_cat').value.trim(),date:$('#f_date').value||today(),note:$('#f_note').value.trim()});
+      await saveState(); closeSheet(); render();
+    };
+    setTimeout(()=>$('#f_amt').focus(),250);
+  }
+
+  /* ----- new loan (Debts menu) ----- */
+  function loanSheet(prefillPerson){
+    let dir='lent';
+    const people=[...new Set(state.debts.map(d=>d.person))];
+    openSheet(`<h3>New loan</h3>
+      <div class="typepick" id="dp"><button data-d="lent" class="on">↗ I lend out</button><button data-d="borrowed">↙ I borrow</button></div>
+      <div class="field"><label>Person</label><input id="d_person" list="ppl" value="${ESC(prefillPerson||'')}" placeholder="Name"><datalist id="ppl">${people.map(p=>`<option value="${ESC(p)}">`).join('')}</datalist></div>
+      <div class="ftwo"><div class="field"><label>Amount</label><input id="d_amt" class="mono" type="number" step="any" inputmode="decimal"></div><div class="field"><label>Currency</label><select id="d_cur">${curOptions(state.base)}</select></div></div>
+      <div class="ftwo"><div class="field"><label>Date</label><input id="d_date" type="date" value="${today()}"></div><div class="field"><label>Note</label><input id="d_note"></div></div>
+      <button class="btn-primary" id="saveLoan">Save</button><button class="btn-ghost" id="cancelLoan">Cancel</button>`);
+    $('#dp').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;dir=b.dataset.d;[...$('#dp').children].forEach(x=>x.classList.toggle('on',x===b));});
+    $('#cancelLoan').onclick=closeSheet;
+    $('#saveLoan').onclick=async()=>{
+      const amt=parseFloat($('#d_amt').value); if(!amt||amt<=0){$('#d_amt').focus();return;}
+      state.debts.push({id:uid(),person:$('#d_person').value.trim()||'—',kind:dir,amount:amt,cur:$('#d_cur').value,date:$('#d_date').value||today(),note:$('#d_note').value.trim()});
+      await saveState(); closeSheet(); render();
+    };
+    setTimeout(()=>$('#d_person').focus(),250);
+  }
+
+  /* ----- person account detail (repay partial/full) ----- */
+  function personSheet(name){
+    const p=personList().find(x=>x.person===name); if(!p) return;
+    const owesMe=p.netBase>=0;
+    const outstanding=Math.abs(p.netBase);                 // in base
+    const moves=p.moves.slice().sort((a,b)=>b.date.localeCompare(a.date));
+    const label={lent:'You lent',borrowed:'You borrowed',repaid_to_me:'They repaid you',repaid_by_me:'You repaid them'};
+    openSheet(`<h3>${ESC(name)}</h3>
+      <div class="sub-h">${outstanding<1?'All settled up':(owesMe?'Owes you':'You owe')} </div>
+      <div class="acct-head"><div class="net mono ${outstanding<1?'':(owesMe?'pos':'neg')}">${fmt(outstanding)} <small style="font-size:14px;color:var(--muted)">${state.base}</small></div>
+        <div class="s" style="font-size:12px;color:var(--muted);margin-top:4px">${Object.entries(p.byCur).filter(([,v])=>Math.abs(v)>=0.01).map(([c,v])=>`${fmt(Math.abs(v))} ${c} ${v>=0?'(owed to you)':'(you owe)'}`).join(' · ')||'—'}</div></div>
+
+      ${outstanding>=1?`
+        <div class="field"><label>${owesMe?'Record repayment from them':'Record payment to them'}</label>
+          <div class="ftwo"><input id="p_amt" class="mono" type="number" step="any" inputmode="decimal" placeholder="Amount"><select id="p_cur">${curOptions(state.base)}</select></div>
+          <div style="margin-top:6px"><span class="quickfill" id="payFull">Pay in full (${fmt(outstanding)} ${state.base})</span></div>
+        </div>
+        <button class="btn-primary" id="doRepay">Save payment</button>`:''}
+      <button class="btn-sec" id="addMore">+ Add another loan with ${ESC(name)}</button>
+
+      <div class="sect-title" style="margin-top:18px">History</div>
+      <div class="hist">${moves.map(m=>`<div class="h-row"><span>${m.date} · ${label[m.kind]}${m.note?' · '+ESC(m.note):''}</span><span class="mono">${fmt(m.amount)} ${m.cur} <span class="x" data-del-move="${m.id}" style="font-size:14px">×</span></span></div>`).join('')}</div>
+      <button class="btn-ghost" id="closeP">Close</button>`);
+
+    $('#closeP').onclick=closeSheet;
+    $('#addMore').onclick=()=>{ closeSheet(); setTimeout(()=>loanSheet(name),300); };
+
+    const payFull=$('#payFull');
+    if(payFull){
+      const recalc=()=>{ const c=$('#p_cur').value; $('#p_amt').value=Math.round(outstanding/(cur(c).rate||1)*100)/100; };
+      payFull.onclick=recalc;
+      $('#p_cur').addEventListener('change',()=>{ if($('#p_amt').value) recalc(); });
+      $('#doRepay').onclick=async()=>{
+        const amt=parseFloat($('#p_amt').value); if(!amt||amt<=0){$('#p_amt').focus();return;}
+        const kind=owesMe?'repaid_to_me':'repaid_by_me';
+        state.debts.push({id:uid(),person:name,kind,amount:amt,cur:$('#p_cur').value,date:today(),note:'repayment'});
+        await saveState(); closeSheet(); render();
+      };
+    }
+  }
+
+  /* ----- recurring: add + detail with Pay ----- */
+  function recurSheet(){
+    openSheet(`<h3>Recurring payment</h3>
+      <div class="field"><label>Name</label><input id="r_name" placeholder="Rent, subscription…"></div>
+      <div class="ftwo"><div class="field"><label>Monthly amount</label><input id="r_amt" class="mono" type="number" step="any" inputmode="decimal"></div><div class="field"><label>Currency</label><select id="r_cur">${curOptions(state.base)}</select></div></div>
+      <div class="ftwo"><div class="field"><label>Start</label><input id="r_start" type="date" value="${today()}"></div><div class="field"><label>End (optional)</label><input id="r_end" type="date"></div></div>
+      <div class="field"><label>Day of month</label><input id="r_day" class="mono" type="number" min="1" max="31" value="1"></div>
+      <button class="btn-primary" id="saveRecur">Save</button><button class="btn-ghost" id="cancelRecur">Cancel</button>`);
+    $('#cancelRecur').onclick=closeSheet;
+    $('#saveRecur').onclick=async()=>{
+      const amt=parseFloat($('#r_amt').value); if(!amt||amt<=0){$('#r_amt').focus();return;}
+      state.recur.push({id:uid(),name:$('#r_name').value.trim()||'Payment',amount:amt,cur:$('#r_cur').value,start:$('#r_start').value||today(),end:$('#r_end').value||'',day:parseInt($('#r_day').value)||1,paid:[]});
+      await saveState(); closeSheet(); render();
+    };
+  }
+  function recurDetail(id){
+    const r=state.recur.find(x=>x.id===id); if(!r) return;
+    const m=thisMonth(), active=r.start.slice(0,7)<=m&&(!r.end||r.end.slice(0,7)>=m);
+    const paid=(r.paid||[]).includes(m);
+    openSheet(`<h3>${ESC(r.name)}</h3>
+      <div class="sub-h">${fmt(r.amount)} ${r.cur} / month · day ${r.day} · ${r.start} → ${r.end||'open'}</div>
+      <div class="acct-head"><div class="s" style="font-size:12px;color:var(--muted)">This month (${m})</div>
+        <div style="font-size:18px;margin-top:4px">${!active?'<span class="s">Not active this month</span>':(paid?'<span class="status-paid">Paid ✓</span>':'<span class="status-due">Not paid yet</span>')}</div></div>
+      ${active&&!paid?`<button class="btn-primary" id="payRecur">Pay ${fmt(r.amount)} ${r.cur} now</button>`:''}
+      ${active&&paid?`<button class="btn-sec" id="unpayRecur">Undo this month's payment</button>`:''}
+      <div class="note">Paying logs an expense for ${m} and charges your cash. Months paid: ${(r.paid||[]).length}.</div>
+      <button class="btn-ghost" id="delRecur" style="color:var(--neg)">Delete this recurring payment</button>
+      <button class="btn-ghost" id="closeR">Close</button>`);
+    $('#closeR').onclick=closeSheet;
+    $('#delRecur').onclick=async()=>{ if(confirm('Delete recurring payment? (logged charges stay)')){ state.recur=state.recur.filter(x=>x.id!==id); await saveState(); closeSheet(); render(); } };
+    const pay=$('#payRecur');
+    if(pay) pay.onclick=async()=>{
+      const date=`${m}-${String(r.day).padStart(2,'0')}`;
+      state.tx.push({id:uid(),type:'expense',amount:r.amount,cur:r.cur,cat:r.name,date,note:'recurring',recurId:r.id,recurMonth:m});
+      r.paid=[...(r.paid||[]),m]; await saveState(); closeSheet(); render();
+    };
+    const un=$('#unpayRecur');
+    if(un) un.onclick=async()=>{
+      state.tx=state.tx.filter(t=>!(t.recurId===r.id&&t.recurMonth===m));
+      r.paid=(r.paid||[]).filter(x=>x!==m); await saveState(); closeSheet(); render();
+    };
+  }
+
+  /* ===== events ===== */
+  let activeView='home';
+  $('nav.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    activeView=b.dataset.v;
+    [...document.querySelectorAll('nav.tabs button')].forEach(x=>x.classList.toggle('on',x===b));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    $('#view-'+activeView).classList.add('active');
+    // FAB only makes sense for income/expense entry → show on Home & Ledger
+    $('#fab').classList.toggle('hide', !(activeView==='home'||activeView==='tx'));
+  });
+  $('#fab').onclick=txSheet;
+  $('#newLoanBtn').onclick=()=>loanSheet();
+  $('#newRecurBtn').onclick=recurSheet;
+
+  $('#txFilter').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;txF=b.dataset.f;[...$('#txFilter').children].forEach(x=>x.classList.toggle('on',x===b));renderTx();});
+
+  document.addEventListener('click',async e=>{
+    const t=e.target;
+    const personRow=t.closest('[data-person]'); if(personRow&&!t.dataset.delMove){ personSheet(personRow.dataset.person); return; }
+    const recurRow=t.closest('[data-recur]'); if(recurRow){ recurDetail(recurRow.dataset.recur); return; }
+    if(t.dataset.delTx){ state.tx=state.tx.filter(x=>x.id!==t.dataset.delTx); await saveState(); render(); }
+    if(t.dataset.delMove){ e.stopPropagation(); state.debts=state.debts.filter(x=>x.id!==t.dataset.delMove); await saveState(); closeSheet(); render(); }
+  });
+
+  $('#baseSel').addEventListener('change',e=>{ state.base=e.target.value; state.currencies.forEach(c=>{if(c.code===state.base)c.rate=1;}); renderRates(); });
+  $('#saveRates').onclick=async()=>{
+    document.querySelectorAll('[data-code]').forEach(i=>state.currencies[+i.dataset.code].code=i.value.trim().toUpperCase()||'CUR');
+    document.querySelectorAll('[data-rate]').forEach(i=>state.currencies[+i.dataset.rate].rate=parseFloat(i.value)||1);
+    if(!state.currencies.find(c=>c.code===state.base)) state.base=state.currencies[0].code;
+    state.currencies.forEach(c=>{if(c.code===state.base)c.rate=1;});
+    await saveState(); render(); alert('Rates saved.');
+  };
+  $('#exportBtn').onclick=()=>{const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='budget-backup-'+today()+'.json';a.click();};
+
+  /* ----- import backup (JSON), validated + confirmed before overwrite ----- */
+  $('#importBtn').onclick=()=>$('#importFile').click();
+  $('#importFile').onchange=async e=>{
+    const file=e.target.files&&e.target.files[0]; if(!file){ return; }
+    try{
+      const data=JSON.parse(await file.text());
+      const required=['base','currencies','tx','debts','recur'];
+      const valid = data && typeof data==='object'
+        && required.every(k=>k in data)
+        && Array.isArray(data.currencies) && Array.isArray(data.tx)
+        && Array.isArray(data.debts) && Array.isArray(data.recur);
+      if(!valid){ alert('That file is not a valid Budget backup (missing or malformed fields).'); return; }
+      if(confirm('Replace ALL current data with this backup? This cannot be undone.')){
+        state=data; await saveState(); render(); alert('Backup imported.');
+      }
+    }catch(err){
+      alert('Could not read that file: '+err.message);
+    }finally{
+      e.target.value='';   // allow re-importing the same file later
+    }
+  };
+
+  $('#resetBtn').onclick=async()=>{ if(confirm('Erase all data?')){ state=JSON.parse(JSON.stringify(DEFAULT)); await saveState(); render(); } };
+
+  /* ===== boot (+ migrate v1 → v2 if present) ===== */
+  (async function(){
+    state=await loadState();
+    // Ask the browser to keep our data (iOS is less likely to evict persisted storage).
+    if(navigator.storage && navigator.storage.persist){ navigator.storage.persist(); }
+    if(!state){
+      // try migrating an older v1 store (idb-keyval), if one exists
+      let old=null; try{ old=(await idbGet('budget-data-v1'))||null; }catch(e){}
+      if(old){
+        state=JSON.parse(JSON.stringify(DEFAULT));
+        state.base=old.base||state.base; state.currencies=old.currencies||state.currencies;
+        state.tx=(old.tx||[]).map(t=>({...t})); state.recur=(old.recur||[]).map(r=>({...r,paid:r.paid||[]}));
+        (old.debts||[]).forEach(d=>{ // old shape {dir,person,amount,cur,date,note,settled}
+          state.debts.push({id:uid(),person:d.person||'—',kind:d.dir==='lent'?'lent':'borrowed',amount:d.amount,cur:d.cur,date:d.date,note:d.note||''});
+          if(d.settled) state.debts.push({id:uid(),person:d.person||'—',kind:d.dir==='lent'?'repaid_to_me':'repaid_by_me',amount:d.amount,cur:d.cur,date:d.date,note:'settled (migrated)'});
+        });
+      } else {
+        state=JSON.parse(JSON.stringify(DEFAULT));
+      }
+      await saveState();
+    }
+    render();
+  })();
+})();
+
+/* ===== service worker: offline app shell ===== */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+}
+</script>
+</div>
+</body>
+</html>

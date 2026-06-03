@@ -1,0 +1,8 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+
+# Local backups exported from the app (keep your money data out of git)
+budget-backup-*.json
