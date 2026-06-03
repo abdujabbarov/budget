@@ -29,7 +29,8 @@
     width:100%; max-width:480px; margin:0 auto; min-height:100vh; padding-bottom:96px; position:relative;
     overflow-x:hidden;
   }
-  #app-root *{box-sizing:border-box;margin:0;padding:0;}
+  /* :where() keeps this reset at zero specificity so .class padding/margins below actually win */
+  :where(#app-root *){box-sizing:border-box;margin:0;padding:0;}
   .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
   .disp{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;}
 
@@ -57,19 +58,19 @@
   .add-link{font-size:14px;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0;border:1px solid var(--line);border-radius:999px;padding:10px 18px;white-space:nowrap;}
   .add-link:active{background:var(--panel-2);}
 
-  .row{display:flex;align-items:center;gap:12px;padding:14px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;}
+  .row{display:flex;align-items:center;gap:12px;padding:15px 15px;background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;}
   .row.tap{cursor:pointer;} .row.tap:active{background:var(--panel-2);}
-  .row .ic{width:38px;height:38px;flex:0 0 38px;border-radius:10px;display:grid;place-items:center;font-size:17px;background:var(--panel-2);}
+  .row .ic{width:42px;height:42px;flex:0 0 42px;border-radius:11px;display:grid;place-items:center;font-size:19px;background:var(--panel-2);}
   .row .meta{flex:1;min-width:0;}
-  .row .meta .t{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .row .meta .s{font-size:12px;color:var(--muted);}
-  .row .amt{font-size:14.5px;font-weight:600;text-align:right;white-space:nowrap;}
-  .row .amt .sub{font-size:11px;color:var(--muted);font-weight:400;}
-  .row .chev{color:var(--muted);font-size:18px;}
-  .row .x{color:var(--muted);font-size:18px;cursor:pointer;padding:0 2px;}
+  .row .meta .t{font-size:15.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .row .meta .s{font-size:13px;color:var(--muted);}
+  .row .amt{font-size:16px;font-weight:600;text-align:right;white-space:nowrap;}
+  .row .amt .sub{font-size:12px;color:var(--muted);font-weight:400;}
+  .row .chev{color:var(--muted);font-size:20px;}
+  .row .x{color:var(--muted);font-size:20px;cursor:pointer;padding:0 2px;}
   .row .x:hover{color:var(--neg);}
 
-  .empty{text-align:center;color:var(--muted);font-size:13px;padding:26px 10px;}
+  .empty{text-align:center;color:var(--muted);font-size:14px;padding:30px 12px;}
 
   .seg{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
   .seg button{font:inherit;font-size:14px;color:var(--muted);cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:10px 18px;}
@@ -110,7 +111,10 @@
   .hist .h-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);}
   .hist .h-row:last-child{border:none;}
   .quickfill{font-size:11px;color:var(--accent);cursor:pointer;}
-  .rate-row{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center;margin-bottom:10px;}
+  .rate-row{display:grid;grid-template-columns:76px 1fr;gap:10px;align-items:center;margin-bottom:10px;}
+  .rate-row input{font:inherit;font-size:16px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px;outline:none;}
+  .rate-row input:focus{border-color:var(--accent);}
+  .rate-row input:disabled{color:var(--muted);}
   .note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5;}
   .bar{height:8px;border-radius:4px;background:var(--panel-2);overflow:hidden;margin-top:8px;}
   .bar>span{display:block;height:100%;background:var(--accent);}
@@ -134,10 +138,7 @@
   <div class="grid2">
     <div class="card"><div class="lbl">Income · this month</div><div class="num mono pos" id="mIncome">—</div></div>
     <div class="card"><div class="lbl">Spent · this month</div><div class="num mono neg" id="mSpent">—</div></div>
-    <div class="card"><div class="lbl">Owed to me</div><div class="num mono pos" id="receiv">—</div></div>
-    <div class="card"><div class="lbl">I owe</div><div class="num mono neg" id="payab">—</div></div>
   </div>
-  <div class="card"><div class="lbl">Monthly recurring commitment</div><div class="num mono acc" id="recurTotal">—</div></div>
   <div class="sect-title">Balances by currency</div>
   <div id="byCurrency"></div>
 </section>
@@ -154,12 +155,17 @@
 
 <!-- DEBTS / PEOPLE -->
 <section class="view" id="view-debt">
+  <div class="grid2">
+    <div class="card"><div class="lbl">Owed to me</div><div class="num mono pos" id="receiv">—</div></div>
+    <div class="card"><div class="lbl">I owe</div><div class="num mono neg" id="payab">—</div></div>
+  </div>
   <div class="sect-title">People <span class="add-link" id="newLoanBtn">+ New loan</span></div>
   <div id="peopleList"></div>
 </section>
 
 <!-- RECURRING -->
 <section class="view" id="view-recur">
+  <div class="card"><div class="lbl">Monthly recurring commitment</div><div class="num mono acc" id="recurTotal">—</div></div>
   <div class="sect-title">Recurring payments <span class="add-link" id="newRecurBtn">+ Add</span></div>
   <div id="recurList"></div>
 </section>
