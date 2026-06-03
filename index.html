@@ -52,6 +52,7 @@
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px;}
   .card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
   .card .num{font-size:23px;font-weight:600;margin-top:4px;}
+  .card .num .unit{font-size:.6em;color:var(--muted);font-weight:400;}
   .pos{color:var(--pos);} .neg{color:var(--neg);} .acc{color:var(--accent);}
 
   .sect-title{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:22px 4px 10px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
@@ -97,6 +98,10 @@
   .field input,.field select,.field textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:13px 14px;outline:none;}
   .field input:focus,.field select:focus{border-color:var(--accent);}
   .ftwo{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  /* min-width:0 lets date/number inputs shrink inside the grid instead of overflowing into the next field */
+  .ftwo>*{min-width:0;}
+  .ftwo>input,.ftwo>select{font:inherit;font-size:16px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:13px 14px;outline:none;width:100%;}
+  .ftwo>input:focus,.ftwo>select:focus{border-color:var(--accent);}
   .typepick{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
   .typepick button{font:inherit;font-size:15px;cursor:pointer;padding:15px 8px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);}
   .typepick button.on{border-color:var(--accent);color:var(--ink);background:rgba(224,168,60,.12);}
@@ -250,16 +255,27 @@ import { get as idbGet, set as idbSet } from './idb-keyval.js';
     const map={};
     state.debts.forEach(d=>{
       const p=d.person||'—';
-      if(!map[p]) map[p]={person:p,netBase:0,byCur:{},last:'',moves:[]};
-      map[p].netBase += SIGN[d.kind]*toBase(d.amount,d.cur);
+      if(!map[p]) map[p]={person:p,byCur:{},last:'',moves:[]};
       map[p].byCur[d.cur]=(map[p].byCur[d.cur]||0)+SIGN[d.kind]*d.amount;
       map[p].moves.push(d);
       if(d.date>map[p].last) map[p].last=d.date;
     });
-    return Object.values(map).sort((a,b)=>Math.abs(b.netBase)-Math.abs(a.netBase));
+    // sort by most recent activity (no cross-currency conversion involved)
+    return Object.values(map).sort((a,b)=>(b.last||'').localeCompare(a.last||''));
   }
-  function receivables(){ return personList().reduce((a,p)=>a+Math.max(p.netBase,0),0); }
-  function payables(){ return personList().reduce((a,p)=>a+Math.max(-p.netBase,0),0); }
+  // Debt totals kept per original currency — never converted to base.
+  // recv[cur] = total others owe you in that currency; pay[cur] = total you owe.
+  function debtTotalsByCur(){
+    const recv={},pay={};
+    personList().forEach(p=>Object.entries(p.byCur).forEach(([c,v])=>{
+      if(v>0.01) recv[c]=(recv[c]||0)+v; else if(v<-0.01) pay[c]=(pay[c]||0)+(-v);
+    }));
+    return {recv,pay};
+  }
+  function curMapLines(map){
+    const e=Object.entries(map).filter(([,v])=>Math.round(v)!==0).sort((a,b)=>b[1]-a[1]);
+    return e.length ? e.map(([c,v])=>`${fmt(v)} <span class="unit">${c}</span>`).join('<br>') : '<span class="unit">—</span>';
+  }
   function recurMonthly(){ const m=thisMonth(); return state.recur.filter(r=>r.start.slice(0,7)<=m&&(!r.end||r.end.slice(0,7)>=m)).reduce((a,r)=>a+toBase(r.amount,r.cur),0); }
   function balancesByCurrency(){
     const map={}; state.currencies.forEach(c=>map[c.code]=0);
@@ -275,8 +291,9 @@ import { get as idbGet, set as idbSet } from './idb-keyval.js';
     const mt=monthTotals(thisMonth());
     $('#mIncome').textContent=fmt(mt.inc);
     $('#mSpent').textContent=fmt(mt.sp);
-    $('#receiv').textContent=fmt(receivables());
-    $('#payab').textContent=fmt(payables());
+    const dt=debtTotalsByCur();
+    $('#receiv').innerHTML=curMapLines(dt.recv);
+    $('#payab').innerHTML=curMapLines(dt.pay);
     $('#recurTotal').textContent=fmt(recurMonthly())+' / mo';
     const ref=Math.max(mt.inc,mt.sp,1), pct=Math.min(100,Math.round(mt.sp/ref*100));
     $('#spendBar').style.width=pct+'%';
@@ -297,14 +314,21 @@ import { get as idbGet, set as idbSet } from './idb-keyval.js';
     }).join(''):'<div class="empty">No transactions yet. Tap + to add income or a spend.</div>';
   }
 
+  // non-zero per-currency balances for a person (+ = owes you, − = you owe)
+  function curEntries(p){ return Object.entries(p.byCur).filter(([,v])=>Math.abs(v)>=0.01).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])); }
   function renderPeople(){
     const ppl=personList();
     $('#peopleList').innerHTML=ppl.length?ppl.map(p=>{
-      const owesMe=p.netBase>=0;
-      const sub=Math.abs(p.netBase)<1?'settled up':(owesMe?'owes you':'you owe');
-      return `<div class="row tap" data-person="${ESC(p.person)}"><div class="ic">${owesMe?'↗':'↙'}</div>
+      const e=curEntries(p);
+      const hasPos=e.some(([,v])=>v>0), hasNeg=e.some(([,v])=>v<0), settled=e.length===0;
+      const icon=settled?'=':(hasPos&&hasNeg?'⇄':(hasPos?'↗':'↙'));
+      const sub=settled?'settled up':(hasPos&&hasNeg?'mixed currencies':(hasPos?'owes you':'you owe'));
+      const amt=settled
+        ? `<div style="color:var(--muted)">settled</div>`
+        : e.map(([c,v])=>`<div class="${v>=0?'pos':'neg'}">${v>=0?'':'−'}${fmt(Math.abs(v))} <span class="sub">${c}</span></div>`).join('');
+      return `<div class="row tap" data-person="${ESC(p.person)}"><div class="ic">${icon}</div>
         <div class="meta"><div class="t">${ESC(p.person)}</div><div class="s">${sub} · ${p.last}</div></div>
-        <div class="amt mono ${Math.abs(p.netBase)<1?'':(owesMe?'pos':'neg')}">${fmt(Math.abs(p.netBase))} <span class="sub">${state.base}</span></div>
+        <div class="amt mono">${amt}</div>
         <span class="chev">›</span></div>`;
     }).join(''):'<div class="empty">No loans yet. Tap “+ New loan”.</div>';
   }
@@ -376,19 +400,23 @@ import { get as idbGet, set as idbSet } from './idb-keyval.js';
   /* ----- person account detail (repay partial/full) ----- */
   function personSheet(name){
     const p=personList().find(x=>x.person===name); if(!p) return;
-    const owesMe=p.netBase>=0;
-    const outstanding=Math.abs(p.netBase);                 // in base
+    const e=curEntries(p);                                  // per-currency balances, no conversion
+    const settled=e.length===0;
+    const hasPos=e.some(([,v])=>v>0), hasNeg=e.some(([,v])=>v<0);
+    const headline=settled?'All settled up':(hasPos&&hasNeg?'Balances by currency':(hasPos?'Owes you':'You owe'));
     const moves=p.moves.slice().sort((a,b)=>b.date.localeCompare(a.date));
     const label={lent:'You lent',borrowed:'You borrowed',repaid_to_me:'They repaid you',repaid_by_me:'You repaid them'};
+    const repayOpts=e.map(([c])=>`<option>${c}</option>`).join('');
     openSheet(`<h3>${ESC(name)}</h3>
-      <div class="sub-h">${outstanding<1?'All settled up':(owesMe?'Owes you':'You owe')} </div>
-      <div class="acct-head"><div class="net mono ${outstanding<1?'':(owesMe?'pos':'neg')}">${fmt(outstanding)} <small style="font-size:14px;color:var(--muted)">${state.base}</small></div>
-        <div class="s" style="font-size:12px;color:var(--muted);margin-top:4px">${Object.entries(p.byCur).filter(([,v])=>Math.abs(v)>=0.01).map(([c,v])=>`${fmt(Math.abs(v))} ${c} ${v>=0?'(owed to you)':'(you owe)'}`).join(' · ')||'—'}</div></div>
+      <div class="sub-h">${headline}</div>
+      <div class="acct-head">${settled
+        ? `<div class="net mono" style="color:var(--muted)">—</div>`
+        : e.map(([c,v])=>`<div class="net mono ${v>=0?'pos':'neg'}" style="font-size:23px;line-height:1.25">${v>=0?'':'−'}${fmt(Math.abs(v))} <small style="font-size:13px;color:var(--muted)">${c}</small> <span style="font-size:12px;color:var(--muted);font-weight:400">${v>=0?'owes you':'you owe'}</span></div>`).join('')}</div>
 
-      ${outstanding>=1?`
-        <div class="field"><label>${owesMe?'Record repayment from them':'Record payment to them'}</label>
-          <div class="ftwo"><input id="p_amt" class="mono" type="number" step="any" inputmode="decimal" placeholder="Amount"><select id="p_cur">${curOptions(state.base)}</select></div>
-          <div style="margin-top:6px"><span class="quickfill" id="payFull">Pay in full (${fmt(outstanding)} ${state.base})</span></div>
+      ${!settled?`
+        <div class="field"><label>Record a payment</label>
+          <div class="ftwo"><input id="p_amt" class="mono" type="number" step="any" inputmode="decimal" placeholder="Amount"><select id="p_cur">${repayOpts}</select></div>
+          <div style="margin-top:8px"><span class="quickfill" id="payFull"></span></div>
         </div>
         <button class="btn-primary" id="doRepay">Save payment</button>`:''}
       <button class="btn-sec" id="addMore">+ Add another loan with ${ESC(name)}</button>
@@ -400,15 +428,17 @@ import { get as idbGet, set as idbSet } from './idb-keyval.js';
     $('#closeP').onclick=closeSheet;
     $('#addMore').onclick=()=>{ closeSheet(); setTimeout(()=>loanSheet(name),300); };
 
-    const payFull=$('#payFull');
-    if(payFull){
-      const recalc=()=>{ const c=$('#p_cur').value; $('#p_amt').value=Math.round(outstanding/(cur(c).rate||1)*100)/100; };
-      payFull.onclick=recalc;
-      $('#p_cur').addEventListener('change',()=>{ if($('#p_amt').value) recalc(); });
+    if(!settled){
+      const balOf=c=>p.byCur[c]||0;
+      const updateFull=()=>{ const c=$('#p_cur').value; $('#payFull').textContent=`Pay in full (${fmt(Math.abs(balOf(c)))} ${c})`; };
+      updateFull();
+      $('#payFull').onclick=()=>{ const c=$('#p_cur').value; $('#p_amt').value=Math.round(Math.abs(balOf(c))*100)/100; };
+      $('#p_cur').addEventListener('change',updateFull);
       $('#doRepay').onclick=async()=>{
         const amt=parseFloat($('#p_amt').value); if(!amt||amt<=0){$('#p_amt').focus();return;}
-        const kind=owesMe?'repaid_to_me':'repaid_by_me';
-        state.debts.push({id:uid(),person:name,kind,amount:amt,cur:$('#p_cur').value,date:today(),note:'repayment'});
+        const c=$('#p_cur').value;
+        const kind=balOf(c)>=0?'repaid_to_me':'repaid_by_me';   // direction follows that currency's balance
+        state.debts.push({id:uid(),person:name,kind,amount:amt,cur:c,date:today(),note:'repayment'});
         await saveState(); closeSheet(); render();
       };
     }
