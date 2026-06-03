@@ -6,3 +6,7 @@ desktop.ini
 
 # Local backups exported from the app (keep your money data out of git)
 budget-backup-*.json
+
+# Local-only source: original prototype + build brief (not part of the deploy)
+budget.html
+BUILD_BRIEF.md
