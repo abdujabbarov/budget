@@ -10,3 +10,9 @@ budget-backup-*.json
 # Local-only source: original prototype + build brief (not part of the deploy)
 budget.html
 BUILD_BRIEF.md
+
+# Local diagnostic/screenshot tooling (not part of the deploy)
+__pycache__/
+_shot*.py
+_shot_*.png
+_measure.py
